@@ -21,6 +21,7 @@ repository="$(jq -r '.source.repository // ""' < "${payload}")"
 git="$(jq -r '.source.git // ""' < "${payload}")"
 # params
 skip_download="$(jq -r '.params.skip_download // false' < "${payload}")"
+fetch_upstream="$(jq -r '.params.fetch_upstream // false' < "${payload}")"
 # version
 version="$(jq -r '.version' < "${payload}")"
 version_id="$(jq -r '.version.id' < "${payload}")"
@@ -53,6 +54,11 @@ curl -s --fail -u "${username}:${password}" "${uri}" > "${pr}"
 git_payload=$(echo "${git}" | jq --argjson version "${version}" '
     {source: (. * {branch: $version.branch})} + {version: {ref: $version.commit}}
 ')
+if [[ "${fetch_upstream}" != "false" ]]; then
+    git_payload=$(echo "${git_payload}" | jq --slurpfile pr "${pr}" '
+        . + {params: {fetch: [ $pr[0].toRef.id|ltrimstr("refs/heads/") ]}}
+    ')
+fi
 
 resource_path="${@%/}"
 if [[ "${skip_download}" = "false" ]]; then
